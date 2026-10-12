@@ -91,8 +91,7 @@ export default function Home() {
     return (
       <div className="login">
         <div className="card">
-          <h1>Gestão Revendas</h1>
-          <p>Cadastre e acompanhe suas lojas revendedoras no mapa.</p>
+          <img src="/logo.png" alt="RM bambini" className="logo" />
           <button className="btn google" onClick={entrar}>Entrar com Google</button>
           {erro && <div className="caixa erro" style={{ marginTop: 16 }}>{erro}</div>}
         </div>
@@ -109,7 +108,7 @@ export default function Home() {
   return (
     <div className="app">
       <header className="topo">
-        <h1>📍 Gestão Revendas</h1>
+        <img src="/logo.png" alt="RM bambini" className="logo-topo" />
         <div className="user">
           <span>{session.user.email}</span>
           <button className="btn sec pequeno" onClick={() => supabase.auth.signOut()}>Sair</button>
