@@ -50,3 +50,9 @@ input:focus,select:focus{outline:2px solid #93c5fd;border-color:#60a5fa}
 @media(max-width:800px){.app{height:auto;min-height:100vh}.corpo{display:flex;flex-direction:column}.mapa-area{order:1;height:45vh;flex:none}.lateral{order:2;border-right:0}}
 .card .logo{display:block;width:100%;max-width:320px;height:auto;margin:0 auto 24px}
 .logo-topo{display:block;height:40px;width:auto}
+.abas{display:flex;gap:6px;margin-bottom:14px;border-bottom:1px solid #e5e7eb}
+.aba{background:none;border:0;padding:8px 14px;border-bottom:2px solid transparent;color:#6b7280;font-weight:600}
+.aba.ativa{color:#2563eb;border-bottom-color:#2563eb}
+.aba:disabled{opacity:.5;cursor:default}
+.pedido{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:14px}
+.pedido-dir{display:flex;align-items:center;gap:10px;font-weight:600}

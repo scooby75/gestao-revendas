@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { infoCidade, fmtKm, norm } from '../lib/geo';
 import { formatCnpj } from '../lib/cnpj';
 import RevendaForm from '../components/RevendaForm';
+import Pedidos from '../components/Pedidos';
 
 const Mapa = dynamic(() => import('../components/Mapa'), {
   ssr: false,
@@ -26,6 +27,7 @@ export default function Home() {
   const [revendas, setRevendas] = useState([]);
   const [erro, setErro] = useState('');
   const [editando, setEditando] = useState(null);
+  const [aba, setAba] = useState('dados');
   const [selecionada, setSelecionada] = useState(null);
   const [rascunho, setRascunho] = useState(null);
   const [busca, setBusca] = useState('');
@@ -54,6 +56,16 @@ export default function Home() {
   }, [session, carregar]);
 
   const infos = useMemo(() => new Map(revendas.map((r) => [r.id, infoCidade(revendas, r)])), [revendas]);
+
+  function abrir(r, a) {
+    setEditando(r);
+    setAba(a || 'dados');
+  }
+
+  function fechar() {
+    setEditando(null);
+    setRascunho(null);
+  }
 
   async function entrar() {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -119,23 +131,42 @@ export default function Home() {
           {editando ? (
             <>
               <h2 style={{ marginTop: 0 }}>{editando.id ? 'Editar revenda' : 'Nova revenda'}</h2>
-              <RevendaForm
-                key={editando.id || 'nova'}
-                inicial={editando}
-                revendas={revendas}
-                aoSalvar={salvar}
-                aoCancelar={() => {
-                  setEditando(null);
-                  setRascunho(null);
-                }}
-                aoLocalizar={setRascunho}
-              />
+              <div className="abas">
+                <button type="button" className={'aba' + (aba === 'dados' ? ' ativa' : '')} onClick={() => setAba('dados')}>Dados</button>
+                <button
+                  type="button"
+                  className={'aba' + (aba === 'pedidos' ? ' ativa' : '')}
+                  disabled={!editando.id}
+                  title={editando.id ? '' : 'Salve a revenda para lançar pedidos'}
+                  onClick={() => setAba('pedidos')}
+                >
+                  Pedidos
+                </button>
+              </div>
+              <div style={{ display: aba === 'dados' ? 'block' : 'none' }}>
+                <RevendaForm
+                  key={editando.id || 'nova'}
+                  inicial={editando}
+                  revendas={revendas}
+                  aoSalvar={salvar}
+                  aoCancelar={fechar}
+                  aoLocalizar={setRascunho}
+                />
+              </div>
+              {aba === 'pedidos' && editando.id && (
+                <>
+                  <Pedidos revendaId={editando.id} />
+                  <div className="acoes" style={{ marginTop: 14 }}>
+                    <button type="button" className="btn sec" onClick={fechar}>Voltar à lista</button>
+                  </div>
+                </>
+              )}
             </>
           ) : (
             <>
               <div className="barra">
                 <input placeholder="Buscar por nome, cidade ou CNPJ" value={busca} onChange={(e) => setBusca(e.target.value)} />
-                <button className="btn" onClick={() => setEditando({})}>+ Nova</button>
+                <button className="btn" onClick={() => abrir({})}>+ Nova</button>
               </div>
               {erro && <div className="caixa erro" style={{ marginBottom: 10 }}>{erro}</div>}
               <p className="muted">{revendas.length} revenda(s) cadastrada(s)</p>
@@ -165,7 +196,8 @@ export default function Home() {
                     )}
                     {minha && (
                       <div className="acoes">
-                        <button className="btn sec pequeno" onClick={(e) => { e.stopPropagation(); setEditando(r); }}>Editar</button>
+                        <button className="btn sec pequeno" onClick={(e) => { e.stopPropagation(); abrir(r); }}>Editar</button>
+                        <button className="btn sec pequeno" onClick={(e) => { e.stopPropagation(); abrir(r, 'pedidos'); }}>Pedidos</button>
                         <button className="btn perigo pequeno" onClick={(e) => { e.stopPropagation(); excluir(r); }}>Excluir</button>
                       </div>
                     )}
