@@ -4,11 +4,23 @@ import { useMemo, useState } from 'react';
 import { formatCnpj, soDigitos, validarCnpj } from '../lib/cnpj';
 import { formatCpf, validarCpf } from '../lib/cpf';
 import { infoCidade, fmtKm } from '../lib/geo';
-import { origemPorEmail, ROTULO_ORIGEM } from '../lib/config';
+import { origemPorEmail, ROTULO_ORIGEM, DISTANCIA_MINIMA_KM } from '../lib/config';
 
 const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// A checagem de distância vale no cadastro e, na edição, só se cidade/UF/localização mudaram
+function mudouLocal(inicial, f, la, lo) {
+  if (!inicial || !inicial.id) return true;
+  const perto = (a, b) => a != null && b != null && Math.abs(a - b) < 1e-7;
+  return (
+    String(inicial.cidade || '').trim().toLowerCase() !== String(f.cidade).trim().toLowerCase() ||
+    inicial.uf !== f.uf ||
+    !perto(inicial.latitude, la) ||
+    !perto(inicial.longitude, lo)
+  );
+}
 
 async function geocodificar(f) {
   const rua = [f.logradouro, f.numero].filter(Boolean).join(' ');
@@ -59,6 +71,7 @@ export default function RevendaForm({ inicial, revendas, emailUsuario, aoSalvar,
   const [erro, setErro] = useState('');
   const [buscando, setBuscando] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [aprox, setAprox] = useState(false);
 
   const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
 
@@ -73,6 +86,8 @@ export default function RevendaForm({ inicial, revendas, emailUsuario, aoSalvar,
     () => infoCidade(revendas, { id: idAtual, cidade: f.cidade, uf: f.uf, latitude: nlat, longitude: nlng }),
     [revendas, idAtual, f.cidade, f.uf, nlat, nlng]
   );
+  const muitoPerto = outras.filter((o) => o.distancia_km != null && o.distancia_km < DISTANCIA_MINIMA_KM);
+  const verificar = mudouLocal(inicial, f, nlat, nlng);
 
   async function aoSairCnpj() {
     const d = soDigitos(f.cnpj);
@@ -130,6 +145,7 @@ export default function RevendaForm({ inicial, revendas, emailUsuario, aoSalvar,
       return null;
     }
     setF((p) => ({ ...p, latitude: r.lat.toFixed(6), longitude: r.lng.toFixed(6) }));
+    setAprox(r.aprox);
     if (aoLocalizar) aoLocalizar({ lat: r.lat, lng: r.lng });
     setMsg(
       r.aprox
@@ -152,11 +168,33 @@ export default function RevendaForm({ inicial, revendas, emailUsuario, aoSalvar,
     setSalvando(true);
     let la = nlat;
     let lo = nlng;
+    let aproxAtual = aprox;
     if (la == null || lo == null) {
       const r = await localizar();
       if (r) {
         la = r.lat;
         lo = r.lng;
+        aproxAtual = r.aprox;
+      }
+    }
+    if (mudouLocal(inicial, f, la, lo)) {
+      const vizinhas = infoCidade(revendas, { id: idAtual, cidade: f.cidade, uf: f.uf, latitude: la, longitude: lo });
+      if (vizinhas.length > 0) {
+        if (la == null || lo == null || aproxAtual) {
+          setSalvando(false);
+          return setErro(
+            'Não foi possível confirmar a distância mínima de ' + DISTANCIA_MINIMA_KM + ' km: já existem lojas em ' +
+              f.cidade + '/' + f.uf + ' e o endereço não foi localizado com precisão. Corrija o endereço ou informe a latitude e a longitude exatas.'
+          );
+        }
+        const perto = vizinhas.find((v) => v.distancia_km != null && v.distancia_km < DISTANCIA_MINIMA_KM);
+        if (perto) {
+          setSalvando(false);
+          return setErro(
+            'Esta loja fica a ' + fmtKm(perto.distancia_km) + ' da loja "' + perto.nome + '". É preciso respeitar ' +
+              DISTANCIA_MINIMA_KM + ' km de distância entre lojas na mesma cidade.'
+          );
+        }
       }
     }
     const nulo = (v) => (v && String(v).trim() ? String(v).trim() : null);
@@ -288,11 +326,11 @@ export default function RevendaForm({ inicial, revendas, emailUsuario, aoSalvar,
       <div className="linha">
         <label>
           Latitude
-          <input value={f.latitude} onChange={set('latitude')} placeholder="automática" />
+          <input value={f.latitude} onChange={(e) => { setAprox(false); set('latitude')(e); }} placeholder="automática" />
         </label>
         <label>
           Longitude
-          <input value={f.longitude} onChange={set('longitude')} placeholder="automática" />
+          <input value={f.longitude} onChange={(e) => { setAprox(false); set('longitude')(e); }} placeholder="automática" />
         </label>
       </div>
       <button type="button" className="btn sec" onClick={localizar} disabled={buscando}>
@@ -305,11 +343,28 @@ export default function RevendaForm({ inicial, revendas, emailUsuario, aoSalvar,
         outras.length === 0 ? (
           <div className="caixa ok">Não existe revenda cadastrada em {f.cidade}/{f.uf}.</div>
         ) : (
-          <div className="caixa alerta">
+          <div className={'caixa ' + (muitoPerto.length > 0 && verificar ? 'erro' : 'alerta')}>
+            {muitoPerto.length > 0 && verificar && (
+              <div style={{ marginBottom: 6 }}>
+                <strong>Distância mínima não respeitada:</strong> as lojas na mesma cidade precisam ficar a pelo menos {DISTANCIA_MINIMA_KM} km uma da outra.
+              </div>
+            )}
+            {muitoPerto.length > 0 && !verificar && (
+              <div style={{ marginBottom: 6 }}>
+                Esta loja já está a menos de {DISTANCIA_MINIMA_KM} km de outra (cadastro anterior à regra).
+              </div>
+            )}
+            {aprox && (
+              <div style={{ marginBottom: 6 }}>
+                Localização aproximada (centro da cidade): a distância abaixo não é confiável.
+              </div>
+            )}
             Já existe(m) {outras.length} revenda(s) em {f.cidade}/{f.uf}. Mais próxima: <strong>{outras[0].nome}</strong> ({fmtKm(outras[0].distancia_km)}).
             <ul>
               {outras.map((o) => (
-                <li key={o.id}>{o.nome} — {fmtKm(o.distancia_km)}</li>
+                <li key={o.id} style={o.distancia_km != null && o.distancia_km < DISTANCIA_MINIMA_KM ? { fontWeight: 700 } : undefined}>
+                  {o.nome} — {fmtKm(o.distancia_km)}
+                </li>
               ))}
             </ul>
           </div>
