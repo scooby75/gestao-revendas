@@ -56,3 +56,22 @@ input:focus,select:focus{outline:2px solid #93c5fd;border-color:#60a5fa}
 .aba:disabled{opacity:.5;cursor:default}
 .pedido{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:14px}
 .pedido-dir{display:flex;align-items:center;gap:10px;font-weight:600}
+.topo{flex-wrap:wrap}
+.nav{display:flex;gap:6px}
+.nav-btn{background:transparent;border:0;border-radius:8px;padding:8px 12px;font-weight:600;color:#1f2937}
+.nav-btn:hover{background:#ecd9b6}
+.nav-btn.ativa{background:#1f2937;color:#fff}
+.pagina{flex:1;overflow:auto;padding:16px}
+.pagina-conteudo{max-width:900px;margin:0 auto;background:#fff;border-radius:12px;padding:16px}
+.filtros{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-bottom:12px}
+.rotulo-filtro{display:grid;gap:4px;font-size:13px;font-weight:600;color:#374151}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.tags .tag{margin:0}
+.tag.status-ativo{background:#dcfce7;color:#166534}
+.tag.status-em_prospeccao{background:#fef3c7;color:#92400e}
+.tag.status-inativo{background:#e5e7eb;color:#374151}
+.tag.neutro{background:#e0e7ff;color:#3730a3}
+.acoes{flex-wrap:wrap}
+.pedido.clicavel{cursor:pointer}
+.pedido.clicavel:hover{background:#f9fafb}
+@media(max-width:800px){.nav{order:3;width:100%;overflow-x:auto}.topo .user span{display:none}.filtros{grid-template-columns:1fr}.pagina{padding:10px}.aba{padding:8px 10px;font-size:14px}}

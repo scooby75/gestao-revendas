@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import { formatCnpj, soDigitos, validarCnpj } from '../lib/cnpj';
+import { formatCpf, validarCpf } from '../lib/cpf';
 import { infoCidade, fmtKm } from '../lib/geo';
+import { origemPorEmail, ROTULO_ORIGEM } from '../lib/config';
 
 const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 
@@ -32,10 +34,14 @@ async function geocodificar(f) {
   return null;
 }
 
-export default function RevendaForm({ inicial, revendas, aoSalvar, aoCancelar, aoLocalizar }) {
+export default function RevendaForm({ inicial, revendas, emailUsuario, aoSalvar, aoCancelar, aoLocalizar }) {
   const [f, setF] = useState({
     cnpj: formatCnpj((inicial && inicial.cnpj) || ''),
     nome: (inicial && inicial.nome) || '',
+    tipo_loja: (inicial && inicial.tipo_loja) || 'fisica',
+    status: (inicial && inicial.status) || 'ativo',
+    proprietario_nome: (inicial && inicial.proprietario_nome) || '',
+    proprietario_cpf: formatCpf((inicial && inicial.proprietario_cpf) || ''),
     cep: (inicial && inicial.cep) || '',
     logradouro: (inicial && inicial.logradouro) || '',
     numero: (inicial && inicial.numero) || '',
@@ -61,6 +67,7 @@ export default function RevendaForm({ inicial, revendas, aoSalvar, aoCancelar, a
   const nlat = Number.isFinite(lat) ? lat : null;
   const nlng = Number.isFinite(lng) ? lng : null;
   const idAtual = inicial && inicial.id;
+  const origem = idAtual ? inicial.origem : origemPorEmail(emailUsuario);
 
   const outras = useMemo(
     () => infoCidade(revendas, { id: idAtual, cidade: f.cidade, uf: f.uf, latitude: nlat, longitude: nlng }),
@@ -140,6 +147,8 @@ export default function RevendaForm({ inicial, revendas, aoSalvar, aoCancelar, a
     if (!f.nome.trim() || !f.logradouro.trim() || !f.cidade.trim() || !f.uf) {
       return setErro('Preencha nome, logradouro, cidade e UF.');
     }
+    const cpf = soDigitos(f.proprietario_cpf);
+    if (cpf && !validarCpf(cpf)) return setErro('CPF do proprietário inválido.');
     setSalvando(true);
     let la = nlat;
     let lo = nlng;
@@ -154,6 +163,10 @@ export default function RevendaForm({ inicial, revendas, aoSalvar, aoCancelar, a
     const payload = {
       cnpj,
       nome: f.nome.trim(),
+      tipo_loja: f.tipo_loja,
+      status: f.status,
+      proprietario_nome: nulo(f.proprietario_nome),
+      proprietario_cpf: cpf || null,
       cep: nulo(soDigitos(f.cep)),
       logradouro: f.logradouro.trim(),
       numero: nulo(f.numero),
@@ -182,6 +195,42 @@ export default function RevendaForm({ inicial, revendas, aoSalvar, aoCancelar, a
         Nome da loja *
         <input value={f.nome} onChange={set('nome')} />
       </label>
+      <div className="linha">
+        <label>
+          Tipo de loja *
+          <select value={f.tipo_loja} onChange={set('tipo_loja')}>
+            <option value="fisica">Física</option>
+            <option value="ecommerce">E-commerce</option>
+          </select>
+        </label>
+        <label>
+          Status *
+          <select value={f.status} onChange={set('status')}>
+            <option value="ativo">Ativo</option>
+            <option value="em_prospeccao">Em Prospecção</option>
+            <option value="inativo">Inativo</option>
+          </select>
+        </label>
+      </div>
+      <div className="caixa info">
+        Pertence a: <strong>{ROTULO_ORIGEM[origem] || 'Fábrica'}</strong>
+        {idAtual ? '' : ' (definido automaticamente pelo seu login)'}
+      </div>
+      <div className="linha">
+        <label>
+          Proprietário - Nome
+          <input value={f.proprietario_nome} onChange={set('proprietario_nome')} />
+        </label>
+        <label>
+          Proprietário - CPF
+          <input
+            value={f.proprietario_cpf}
+            onChange={(e) => setF((p) => ({ ...p, proprietario_cpf: formatCpf(e.target.value) }))}
+            placeholder="000.000.000-00"
+            inputMode="numeric"
+          />
+        </label>
+      </div>
       <div className="linha">
         <label>
           CEP

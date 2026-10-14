@@ -2,37 +2,20 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { brl, dataBr, hoje, lerValor } from '../lib/format';
+import { ROTULO_FORMA } from '../lib/config';
 
 const FORMAS = [
   { valor: 'pix', rotulo: 'Pix' },
   { valor: 'cartao_credito', rotulo: 'Cartão de Crédito' },
 ];
 
-const rotulo = (v) => (FORMAS.find((f) => f.valor === v) || {}).rotulo || v;
-const brl = (n) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(n) || 0);
-const dataBr = (s) => {
-  const [a, m, d] = String(s).split('-');
-  return d + '/' + m + '/' + a;
-};
-const hoje = () => {
-  const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-};
-
-// Aceita "1.234,56", "1234,56", "1234.56" e "1.500" (milhar)
-function lerValor(txt) {
-  let t = String(txt).replace(/[^0-9.,]/g, '');
-  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
-  else if (/^[0-9]{1,3}(\.[0-9]{3})+$/.test(t)) t = t.replace(/\./g, '');
-  const n = parseFloat(t);
-  return Number.isFinite(n) ? Math.round(n * 100) / 100 : null;
-}
-
 export default function Pedidos({ revendaId }) {
   const [lista, setLista] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [data, setData] = useState(hoje());
+  const [envio, setEnvio] = useState('');
   const [forma, setForma] = useState('pix');
   const [valor, setValor] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -61,14 +44,20 @@ export default function Pedidos({ revendaId }) {
     setErro('');
     const v = lerValor(valor);
     if (!data) return setErro('Informe a data do pedido.');
+    if (envio && envio < data) return setErro('A data prevista de envio não pode ser anterior à data do pedido.');
     if (v == null || v <= 0) return setErro('Informe um valor válido em R$.');
     setSalvando(true);
-    const { error } = await supabase
-      .from('pedidos')
-      .insert({ revenda_id: revendaId, data_pedido: data, forma_pagamento: forma, valor: v });
+    const { error } = await supabase.from('pedidos').insert({
+      revenda_id: revendaId,
+      data_pedido: data,
+      data_prevista_envio: envio || null,
+      forma_pagamento: forma,
+      valor: v,
+    });
     setSalvando(false);
     if (error) return setErro(error.message);
     setValor('');
+    setEnvio('');
     await carregar();
   }
 
@@ -90,6 +79,12 @@ export default function Pedidos({ revendaId }) {
             <input type="date" value={data} onChange={(e) => setData(e.target.value)} />
           </label>
           <label>
+            Data prevista de envio
+            <input type="date" value={envio} onChange={(e) => setEnvio(e.target.value)} />
+          </label>
+        </div>
+        <div className="linha">
+          <label>
             Forma de pagamento
             <select value={forma} onChange={(e) => setForma(e.target.value)}>
               {FORMAS.map((f) => (
@@ -97,11 +92,11 @@ export default function Pedidos({ revendaId }) {
               ))}
             </select>
           </label>
+          <label>
+            Valor (R$)
+            <input value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0,00" inputMode="decimal" />
+          </label>
         </div>
-        <label>
-          Valor (R$)
-          <input value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0,00" inputMode="decimal" />
-        </label>
         <button type="submit" className="btn" disabled={salvando}>
           {salvando ? 'Adicionando…' : '+ Adicionar pedido'}
         </button>
@@ -120,7 +115,10 @@ export default function Pedidos({ revendaId }) {
             <div key={p.id} className="pedido">
               <div>
                 <strong>{dataBr(p.data_pedido)}</strong>
-                <small className="muted" style={{ display: 'block' }}>{rotulo(p.forma_pagamento)}</small>
+                <small className="muted" style={{ display: 'block' }}>
+                  {ROTULO_FORMA[p.forma_pagamento] || p.forma_pagamento}
+                  {p.data_prevista_envio ? ' · Envio previsto: ' + dataBr(p.data_prevista_envio) : ''}
+                </small>
               </div>
               <div className="pedido-dir">
                 <span>{brl(p.valor)}</span>
