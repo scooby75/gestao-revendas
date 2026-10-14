@@ -7,7 +7,7 @@ import { norm } from '../lib/geo';
 import { ROTULO_FORMA } from '../lib/config';
 
 // Visão geral de todos os pedidos (tipo="pedidos") ou negócios prováveis (tipo="negocios")
-export default function Lancamentos({ tipo, aoAbrir }) {
+export default function Lancamentos({ tipo, meuId, aoAbrir }) {
   const ehPedido = tipo === 'pedidos';
   const tabela = ehPedido ? 'pedidos' : 'negocios_provaveis';
   const colData = ehPedido ? 'data_pedido' : 'data_negocio';
@@ -24,7 +24,7 @@ export default function Lancamentos({ tipo, aoAbrir }) {
     setCarregando(true);
     supabase
       .from(tabela)
-      .select('*, revendas(id, nome, cidade, uf)')
+      .select('*, revendas(id, nome, cidade, uf, user_id)')
       .order(colData, { ascending: false })
       .limit(1000)
       .then(({ data, error }) => {
@@ -83,8 +83,13 @@ export default function Lancamentos({ tipo, aoAbrir }) {
         <>
           {filtradas.map((l) => {
             const r = l.revendas || {};
+            const meu = r.user_id === meuId;
             return (
-              <div key={l.id} className="pedido clicavel" onClick={() => aoAbrir && aoAbrir(l.revenda_id, tipo)}>
+              <div
+                key={l.id}
+                className={'pedido' + (meu ? ' clicavel' : '')}
+                onClick={() => meu && aoAbrir && aoAbrir(l.revenda_id, tipo)}
+              >
                 <div>
                   <strong>{r.nome || 'Loja'}</strong>
                   <small className="muted" style={{ display: 'block' }}>

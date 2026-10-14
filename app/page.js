@@ -79,7 +79,7 @@ export default function Home() {
 
   function abrirPorId(id, a) {
     const r = revendas.find((x) => x.id === id);
-    if (r) abrir(r, a);
+    if (r && session && r.user_id === session.user.id) abrir(r, a);
   }
 
   async function entrar() {
@@ -150,7 +150,7 @@ export default function Home() {
       {tela !== 'lojas' ? (
         <div className="pagina">
           <div className="pagina-conteudo">
-            <Lancamentos key={tela} tipo={tela} aoAbrir={abrirPorId} />
+            <Lancamentos key={tela} tipo={tela} meuId={meuId} aoAbrir={abrirPorId} />
           </div>
         </div>
       ) : (
@@ -237,14 +237,14 @@ export default function Home() {
                           {r.whatsapp && <a href={urlZap(r.whatsapp)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>WhatsApp</a>}
                         </div>
                       )}
-                      <div className="acoes">
-                        <button className="btn sec pequeno" onClick={(e) => { e.stopPropagation(); abrir(r); }}>Editar</button>
-                        <button className="btn sec pequeno" onClick={(e) => { e.stopPropagation(); abrir(r, 'pedidos'); }}>Pedidos</button>
-                        <button className="btn sec pequeno" onClick={(e) => { e.stopPropagation(); abrir(r, 'negocios'); }}>Negócios</button>
-                        {minha && (
+                      {minha && (
+                        <div className="acoes">
+                          <button className="btn sec pequeno" onClick={(e) => { e.stopPropagation(); abrir(r); }}>Editar</button>
+                          <button className="btn sec pequeno" onClick={(e) => { e.stopPropagation(); abrir(r, 'pedidos'); }}>Pedidos</button>
+                          <button className="btn sec pequeno" onClick={(e) => { e.stopPropagation(); abrir(r, 'negocios'); }}>Negócios</button>
                           <button className="btn perigo pequeno" onClick={(e) => { e.stopPropagation(); excluir(r); }}>Excluir</button>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
