@@ -27,6 +27,7 @@ const urlZap = (s) => {
 export default function Home() {
   const [session, setSession] = useState(null);
   const [pronto, setPronto] = useState(false);
+  const [autorizado, setAutorizado] = useState(null);
   const [revendas, setRevendas] = useState([]);
   const [erro, setErro] = useState('');
   const [tela, setTela] = useState('lojas');
@@ -54,10 +55,29 @@ export default function Home() {
     }
   }, []);
 
+  // Só e-mails da lista usuarios_autorizados enxergam dados (o banco também exige isso)
   useEffect(() => {
-    if (session) carregar();
+    if (!session) {
+      setAutorizado(null);
+      return undefined;
+    }
+    let vivo = true;
+    supabase
+      .from('usuarios_autorizados')
+      .select('email')
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (vivo) setAutorizado(!error && !!data);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [session]);
+
+  useEffect(() => {
+    if (session && autorizado) carregar();
     else setRevendas([]);
-  }, [session, carregar]);
+  }, [session, autorizado, carregar]);
 
   const infos = useMemo(() => new Map(revendas.map((r) => [r.id, infoCidade(revendas, r)])), [revendas]);
 
@@ -120,6 +140,22 @@ export default function Home() {
           <img src="/logo.png" alt="RM bambini" className="logo" />
           <button className="btn google" onClick={entrar}>Entrar com Google</button>
           {erro && <div className="caixa erro" style={{ marginTop: 16 }}>{erro}</div>}
+        </div>
+      </div>
+    );
+  }
+
+  if (autorizado === null) {
+    return <div className="carregando" style={{ height: '100vh' }}>Verificando acesso…</div>;
+  }
+
+  if (!autorizado) {
+    return (
+      <div className="login">
+        <div className="card">
+          <img src="/logo.png" alt="RM bambini" className="logo" />
+          <p>O e-mail {session.user.email} não tem acesso ao sistema. Peça a liberação ao administrador.</p>
+          <button className="btn google" onClick={() => supabase.auth.signOut()}>Sair</button>
         </div>
       </div>
     );

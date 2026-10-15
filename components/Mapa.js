@@ -15,20 +15,20 @@ const icone = L.icon({
   shadowSize: [41, 41],
 });
 
-function esc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
+// Popup montado com nós de texto (textContent): nada do que o usuário digita vira HTML
 function popup(r) {
-  const end = [r.logradouro, r.numero].filter(Boolean).join(', ');
-  const cid = [r.bairro, r.cidade + '/' + r.uf].filter(Boolean).join(' - ');
-  let h = '<strong>' + esc(r.nome) + '</strong><br>' + esc(end) + '<br>' + esc(cid);
-  if (r.whatsapp) h += '<br>WhatsApp: ' + esc(r.whatsapp);
-  return h;
+  const el = document.createElement('div');
+  const nome = document.createElement('strong');
+  nome.textContent = r.nome;
+  el.appendChild(nome);
+  const linha = (texto) => {
+    el.appendChild(document.createElement('br'));
+    el.appendChild(document.createTextNode(texto));
+  };
+  linha([r.logradouro, r.numero].filter(Boolean).join(', '));
+  linha([r.bairro, r.cidade + '/' + r.uf].filter(Boolean).join(' - '));
+  if (r.whatsapp) linha('WhatsApp: ' + r.whatsapp);
+  return el;
 }
 
 export default function Mapa({ revendas, selecionada, aoSelecionar, rascunho }) {
